@@ -686,8 +686,11 @@ $(document).ready(() => {
     AW.initSliderBrands($(this));
   });
 
+  // Хранилище для слайдеров (по wrapper и ID таба)
+  const slidersMap = {};
+
   function initTabSliders(wrapperSelector, sliderSelector, slidersStorage) {
-    const $wrappers = $(wrapperSelector); // например, [data-swiper-wrapper="news"]
+    const $wrappers = $(wrapperSelector);
 
     $wrappers.each(function () {
       const $wrapper = $(this);
@@ -704,8 +707,8 @@ $(document).ready(() => {
           slidesPerView: 20,
           speed: 200,
           navigation: {
-            nextEl: null,
-            prevEl: null,
+            nextEl: $navNext,
+            prevEl: $navPrev,
           },
           pagination: {
             el: $wrapper.find('.swiper-pagination')[0],
@@ -716,6 +719,14 @@ $(document).ready(() => {
             768: { slidesPerView: 2.5, spaceBetween: 10 },
             1200: { slidesPerView: 3.2, spaceBetween: 20 },
             1400: { slidesPerView: 5, spaceBetween: 20 }
+          },
+          on: {
+            init: function () {
+              updateNavigationButtons(this);
+            },
+            slideChange: function () {
+              updateNavigationButtons(this);
+            }
           }
         });
 
@@ -727,33 +738,77 @@ $(document).ready(() => {
 
         slidersStorage[wrapperId][tabId] = slider;
       });
-
-      // Общая навигация для этого wrapper
-      const handleNavigation = (direction) => {
-        const activeTab = $wrapper.find('.tabs__body._tab-active');
-        const tabId = activeTab.attr('data-id');
-        const wrapperId = $wrapper.attr('data-swiper-wrapper');
-        const slider = slidersStorage[wrapperId][tabId];
-
-        if (slider && direction === 'next') slider.slideNext();
-        if (slider && direction === 'prev') slider.slidePrev();
-      };
-
-      if ($navNext) {
-        $navNext.addEventListener('click', () => handleNavigation('next'));
-      }
-
-      if ($navPrev) {
-        $navPrev.addEventListener('click', () => handleNavigation('prev'));
-      }
     });
+
+    // После инициализации всех слайдеров — обновляем только активные табы
+    setTimeout(() => {
+      $('.heading-complex__nav button._tab-active').each(function () {
+        const $button = $(this);
+        const tabId = $button.attr('data-id');
+        const $wrapper = $button.closest('[data-swiper-wrapper]');
+        const wrapperId = $wrapper.attr('data-swiper-wrapper');
+
+        const slider = slidersStorage[wrapperId]?.[tabId];
+        if (slider) {
+          requestAnimationFrame(() => {
+            slider.update();
+            updateNavigationButtons(slider);
+          });
+        }
+      });
+    }, 100);
   }
 
-  // Хранилища слайдеров
-  const slidersMap = {};
+  function updateNavigationButtons(slider) {
+    const isBeginning = slider.isBeginning;
+    const isEnd = slider.isEnd;
+
+    if (slider.params.navigation && slider.params.navigation.nextEl) {
+      const nextEl = slider.navigation.nextEl;
+      if (isEnd) {
+        nextEl.classList.add('swiper-button-disabled');
+      } else {
+        nextEl.classList.remove('swiper-button-disabled');
+      }
+    }
+
+    if (slider.params.navigation && slider.params.navigation.prevEl) {
+      const prevEl = slider.navigation.prevEl;
+      if (isBeginning) {
+        prevEl.classList.add('swiper-button-disabled');
+      } else {
+        prevEl.classList.remove('swiper-button-disabled');
+      }
+    }
+  }
 
   // Инициализируем слайдеры для разных типов
   initTabSliders('[data-swiper-wrapper="news"]', '[data-swiper="news"]', slidersMap);
   initTabSliders('[data-swiper-wrapper="recommended"]', '[data-swiper="recommended"]', slidersMap);
+
+  // Переключение табов и обновление слайдера
+  $('.heading-complex__nav button').on('click', function () {
+    const $button = $(this);
+    const tabId = $button.attr('data-id');
+    const $wrapper = $button.closest('[data-swiper-wrapper]');
+    const wrapperId = $wrapper.attr('data-swiper-wrapper');
+
+    // Удаляем класс _tab-active у всех кнопок и tabs__body
+    $wrapper.find('.heading-complex__nav button').removeClass('_tab-active');
+    $wrapper.find('.tabs__body').removeClass('_tab-active');
+
+    // Добавляем к текущей
+    $button.addClass('_tab-active');
+    $wrapper.find(`.tabs__body[data-id="${tabId}"]`).addClass('_tab-active');
+
+    // Получаем слайдер по ID вкладки и обновляем его
+    const slider = slidersMap[wrapperId]?.[tabId];
+    if (slider) {
+      requestAnimationFrame(() => {
+        slider.update(); // <-- Обновляем размеры слайдера
+        updateNavigationButtons(slider); // <-- Принудительно обновляем состояние кнопок
+      });
+    }
+  });
 
 });
