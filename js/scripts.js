@@ -452,9 +452,89 @@ $(document).ready(() => {
     });
   }
 
+  // Добавляем обработку перехода по якорным ссылкам
+  document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+    anchor.addEventListener('click', function (e) {
+      const hash = this.getAttribute('href');
+
+      // Проверяем, совпадает ли хэш с id какой-либо вкладки
+      if (hash === '#characteristics') {
+
+        const tabBlock = document.querySelector('.block-tabs');
+
+        if (tabBlock) {
+          // Находим кнопку с нужным id
+          const characteristicsButton = tabBlock.querySelector('button#characteristics');
+
+          if (characteristicsButton) {
+            // Эмулируем клик по кнопке вкладки
+            characteristicsButton.click();
+          }
+        }
+      }
+    });
+  });
+
+  //Плавающая кнопка
+  const filterFloatingButton = document.querySelector(".filter-catalog-detail__floating-btn");
+
+  if (filterFloatingButton) {
+    let header = document.querySelector(".header");
+    const filterContent = document.querySelector(".filter-catalog-detail__content");
+
+    // Получаем все .filter-catalog-detail__item, кроме первого
+    const filterItems = document.querySelectorAll(".filter-catalog-detail__item");
+    const activeFilterItems = Array.from(filterItems).slice(1); // пропускаем первый
+
+    // Собираем все нужные инпуты (чекбоксы и радио)
+    const allInputs = activeFilterItems.flatMap(item => {
+      const checkboxes = item.querySelectorAll(".checkbox__input");
+      const radios = item.querySelectorAll(".radio__input");
+      return [...checkboxes, ...radios];
+    });
+
+    // Расчёт позиции кнопки
+    let wfilterContent = window.getComputedStyle(filterContent, false).width;
+    wfilterContent = Number(wfilterContent.slice(0, wfilterContent.length - 2));
+    let hfilterContent = filterContent.getBoundingClientRect().top;
+
+    filterFloatingButton.style.left = wfilterContent + "px";
+    filterFloatingButton.style.display = "none";
+
+    let timeoutId = null;
+
+    let hheader = window.getComputedStyle(header, false).height;
+    hheader = Number(hheader.slice(0, hheader.length - 2));
+
+    function handleInputToggle(input) {
+      if (document.documentElement.clientWidth > 992) {
+        if (timeoutId) clearTimeout(timeoutId);
+
+        let top = input.getBoundingClientRect().top - hfilterContent + 15;
+        filterFloatingButton.style.top = top + "px";
+
+        if (input.checked) {
+          filterFloatingButton.style.display = "block";
+        } else {
+          filterFloatingButton.style.display = "none";
+        }
+
+        timeoutId = setTimeout(() => {
+          filterFloatingButton.style.display = "none";
+        }, 10000);
+      }
+    }
+
+    allInputs.forEach(input => {
+      input.addEventListener("change", () => {
+        handleInputToggle(input);
+      });
+    });
+  }
+
   //Поиск
-  const button = document.querySelector('.header-search__button');
-  const headerSearch = document.querySelector('.header-search');
+  const button = document.querySelector('.search__button');
+  const headerSearch = document.querySelector('.search');
 
   if (button && headerSearch) {
     button.addEventListener('click', function (e) {
@@ -580,6 +660,257 @@ $(document).ready(() => {
     });
   }
 
+  //Фильтр
+  const filterMob = document.querySelector('.block-catalog-detail__filter-mob');
+  const filterPanel = document.querySelector('.filter-catalog-detail');
+  const filterCloseBtn = document.querySelector('.filter-catalog-detail__close');
+  if (filterMob) {
+
+    // Открытие фильтра
+    filterMob.addEventListener('click', function (e) {
+      e.stopPropagation();
+      document.documentElement.classList.add('filter-open');
+      filterPanel.classList.add('filter-open');
+    });
+
+    // Закрытие по кнопке
+    if (filterCloseBtn) {
+      filterCloseBtn.addEventListener('click', function () {
+        document.documentElement.classList.remove('filter-open');
+        filterPanel.classList.remove('filter-open');
+      });
+    }
+
+    // Закрытие при клике вне области фильтра
+    document.addEventListener('click', function (e) {
+      const isClickInsideFilter = filterPanel.contains(e.target);
+      const isClickOnFilterMob = filterMob === e.target || filterMob.contains(e.target);
+
+      if (!isClickInsideFilter && !isClickOnFilterMob) {
+        document.documentElement.classList.remove('filter-open');
+        filterPanel.classList.remove('filter-open');
+      }
+    });
+  }
+
+  const filters = document.querySelectorAll('.block-catalog-detail__filter-title');
+  const cards = document.querySelectorAll('.card-product');
+
+  if (filters) {
+    filters.forEach(button => {
+      button.addEventListener('click', function () {
+        // Переключаем класс _active у текущей кнопки
+        this.classList.toggle('_active');
+
+        // Получаем все активные фильтры
+        const activeFilters = Array.from(document.querySelectorAll('.block-catalog-detail__filter-title._active')).map(btn =>
+          btn.getAttribute('data-filter')
+        );
+
+        // Если нет активных фильтров — показываем всё
+        if (activeFilters.length === 0) {
+          cards.forEach(card => card.classList.remove('_hide'));
+          return;
+        }
+
+        // Иначе фильтруем по активным категориям
+        cards.forEach(card => {
+          const category = card.getAttribute('data-category');
+          if (category && activeFilters.includes(category)) {
+            card.classList.remove('_hide');
+          } else {
+            card.classList.add('_hide');
+          }
+        });
+      });
+    });
+  }
+
+  let _slideUp = (target, duration = 500, showmore = 0) => {
+    if (!target.classList.contains("_slide")) {
+      target.classList.add("_slide");
+      target.style.transitionProperty = "height, margin, padding";
+      target.style.transitionDuration = duration + "ms";
+      target.style.height = `${target.offsetHeight}px`;
+      target.offsetHeight;
+      target.style.overflow = "hidden";
+      target.style.height = showmore ? `${showmore}px` : `0px`;
+      target.style.paddingTop = 0;
+      target.style.paddingBottom = 0;
+      target.style.marginTop = 0;
+      target.style.marginBottom = 0;
+      window.setTimeout((() => {
+        target.hidden = !showmore ? true : false;
+        !showmore ? target.style.removeProperty("height") : null;
+        target.style.removeProperty("padding-top");
+        target.style.removeProperty("padding-bottom");
+        target.style.removeProperty("margin-top");
+        target.style.removeProperty("margin-bottom");
+        !showmore ? target.style.removeProperty("overflow") : null;
+        target.style.removeProperty("transition-duration");
+        target.style.removeProperty("transition-property");
+        target.classList.remove("_slide");
+        document.dispatchEvent(new CustomEvent("slideUpDone", {
+          detail: {
+            target
+          }
+        }));
+      }), duration);
+    }
+  };
+  let _slideDown = (target, duration = 500, showmore = 0) => {
+    if (!target.classList.contains("_slide")) {
+      target.classList.add("_slide");
+      target.hidden = target.hidden ? false : null;
+      showmore ? target.style.removeProperty("height") : null;
+      let height = target.offsetHeight;
+      target.style.overflow = "hidden";
+      target.style.height = showmore ? `${showmore}px` : `0px`;
+      target.style.paddingTop = 0;
+      target.style.paddingBottom = 0;
+      target.style.marginTop = 0;
+      target.style.marginBottom = 0;
+      target.offsetHeight;
+      target.style.transitionProperty = "height, margin, padding";
+      target.style.transitionDuration = duration + "ms";
+      target.style.height = height + "px";
+      target.style.removeProperty("padding-top");
+      target.style.removeProperty("padding-bottom");
+      target.style.removeProperty("margin-top");
+      target.style.removeProperty("margin-bottom");
+      window.setTimeout((() => {
+        target.style.removeProperty("height");
+        target.style.removeProperty("overflow");
+        target.style.removeProperty("transition-duration");
+        target.style.removeProperty("transition-property");
+        target.classList.remove("_slide");
+        document.dispatchEvent(new CustomEvent("slideDownDone", {
+          detail: {
+            target
+          }
+        }));
+      }), duration);
+    }
+  };
+  let _slideToggle = (target, duration = 500) => {
+    if (target.hidden) return _slideDown(target, duration); else return _slideUp(target, duration);
+  };
+
+  //Спойлеры
+  function spollers() {
+    const spollersArray = document.querySelectorAll("[data-spollers]");
+    if (spollersArray.length > 0) {
+
+      // Функция инициализации спойлеров
+      function initSpollers(spollersArray, matchMedia = false) {
+        spollersArray.forEach((spollersBlock) => {
+          spollersBlock = matchMedia ? spollersBlock.item : spollersBlock;
+          if (matchMedia.matches || !matchMedia) {
+            spollersBlock.classList.add("_spoller-init");
+            initSpollerBody(spollersBlock);
+            spollersBlock.addEventListener("click", setSpollerAction);
+          } else {
+            spollersBlock.classList.remove("_spoller-init");
+            initSpollerBody(spollersBlock, false);
+            spollersBlock.removeEventListener("click", setSpollerAction);
+          }
+        });
+      }
+
+      // Настройка тела спойлера (скрытие/показ)
+      function initSpollerBody(spollersBlock, hideSpollerBody = true) {
+        const spollerItems = spollersBlock.querySelectorAll(".spollers__item");
+        if (spollerItems.length) {
+          spollerItems.forEach((spollerItem) => {
+            const content = spollerItem.querySelector(".spollers__body");
+            if (content) {
+              if (hideSpollerBody) {
+                if (!spollerItem.classList.contains("_spoller-active")) {
+                  content.hidden = true;
+                }
+              } else {
+                content.hidden = false;
+              }
+            }
+          });
+        }
+      }
+
+      // Логика открытия/закрытия спойлера
+      function setSpollerAction(e) {
+        const el = e.target;
+        const spollerTitle = el.closest("[data-spoller]");
+
+        if (spollerTitle) {
+          // Ищем .spollers__title как родителя, где живёт data-spoller
+          const spollerItem = spollerTitle.closest(".spollers__item");
+          if (!spollerItem) return;
+
+          const content = spollerItem.querySelector(".spollers__body");
+          if (!content) return;
+
+          const spollersBlock = spollerItem.closest("[data-spollers]");
+          const oneSpoller = spollersBlock.hasAttribute("data-one-spoller");
+          const spollerSpeed = parseInt(spollersBlock.dataset.spollersSpeed) || 500;
+
+          // Защита от повторной анимации
+          if (spollersBlock.querySelectorAll("._slide").length > 0) return;
+
+          // Если аккордеон — закрываем другие
+          if (oneSpoller && !spollerItem.classList.contains("_spoller-active")) {
+            hideSpollersBody(spollersBlock);
+          }
+
+          // Переключаем класс и анимируем
+          spollerItem.classList.toggle("_spoller-active");
+          _slideToggle(content, spollerSpeed);
+
+          e.preventDefault();
+        }
+      }
+
+      // Закрывает активный спойлер, если используется data-one-spoller
+      function hideSpollersBody(spollersBlock) {
+        const activeItem = spollersBlock.querySelector(".spollers__item._spoller-active");
+        if (!activeItem) return;
+
+        const content = activeItem.querySelector(".spollers__body");
+        const spollerSpeed = spollersBlock.dataset.spollersSpeed
+          ? parseInt(spollersBlock.dataset.spollersSpeed)
+          : 500;
+
+        if (!spollersBlock.querySelectorAll("._slide").length) {
+          activeItem.classList.remove("_spoller-active");
+          _slideUp(content, spollerSpeed);
+        }
+      }
+
+      // Закрытие по клику вне блока
+      const spollersClose = document.querySelectorAll("[data-spoller-close]");
+      if (spollersClose.length) {
+        document.addEventListener("click", (e) => {
+          const el = e.target;
+          if (!el.closest("[data-spollers]")) {
+            spollersClose.forEach((spollerClose) => {
+              const spollersBlock = spollerClose.closest("[data-spollers]");
+              const spollerSpeed = spollersBlock.dataset.spollersSpeed
+                ? parseInt(spollersBlock.dataset.spollersSpeed)
+                : 500;
+              spollerClose.classList.remove("_spoller-active");
+              _slideUp(spollerClose.nextElementSibling, spollerSpeed);
+            });
+          }
+        });
+      }
+
+      // Инициализируем все найденные спойлеры
+      initSpollers(Array.from(spollersArray));
+
+    }
+  }
+  spollers()
+
+
   AW.initSliderIntro = function ($el) {
     const $wrapper = $('[data-swiper-wrapper="intro"]');
     const $navNext = $wrapper.find('.swiper-nav_next');
@@ -685,6 +1016,100 @@ $(document).ready(() => {
   $('[data-swiper="brands"]').each(function () {
     AW.initSliderBrands($(this));
   });
+
+  AW.initSliderBrands = function ($el) {
+    const $wrapper = $('[data-swiper-wrapper="brands"]');
+    const $navNext = $wrapper.find('.swiper-nav_next');
+    const $navPrev = $wrapper.find('.swiper-nav_prev');
+    const $slides = $el.find('.swiper-slide');
+    return new Swiper($el[0], {
+      spaceBetween: 4,
+      slidesPerView: 20,
+      speed: 200,
+      navigation: {
+        nextEl: $navNext[0],
+        prevEl: $navPrev[0],
+      },
+      breakpoints: {
+        0: { slidesPerView: 1.5, spaceBetween: 10 },
+        375: { slidesPerView: 2.1, spaceBetween: 10 },
+        768: { slidesPerView: 2.5, spaceBetween: 10 },
+        1200: { slidesPerView: 3.2, spaceBetween: 20 },
+        1400: { slidesPerView: 4, spaceBetween: 20 }
+      }
+    });
+  }
+  $('[data-swiper="photo"]').each(function () {
+    AW.initSliderBrands($(this));
+  });
+
+  AW.initProductSlider = function ($el) {
+    const $wrapper = $('[data-swiper-wrapper="product-card"]');
+
+    // Навигация для thumbs
+    const $navThumbsNext = $wrapper.find('.top-block-product__thumbs .swiper-nav_next')[0];
+    const $navThumbsPrev = $wrapper.find('.top-block-product__thumbs .swiper-nav_prev')[0];
+
+    // Навигация для основного слайдера
+    const $navMainNext = $wrapper.find('.top-block-product__slider .swiper-nav_next')[0];
+    const $navMainPrev = $wrapper.find('.top-block-product__slider .swiper-nav_prev')[0];
+
+    let thumbsSwiper;
+    let mainSwiper;
+
+    // Инициализация thumbsSwiper
+    thumbsSwiper = new Swiper('.top-block-product__thumbs .swiper-thumbs', {
+      slidesPerView: 4,
+      spaceBetween: 10,
+      direction: 'vertical',
+      speed: 400,
+      watchSlidesProgress: true,
+      navigation: {
+        nextEl: $navThumbsNext,
+        prevEl: $navThumbsPrev,
+      },
+      breakpoints: {
+        0: {
+          direction: 'horizontal',
+          slidesPerView: 4,
+        },
+        1100: {
+          direction: 'vertical',
+          slidesPerView: 4,
+        },
+      },
+    });
+
+    // Инициализация mainSwiper
+    mainSwiper = new Swiper('.top-block-product__slider .swiper-product-card', {
+      thumbs: {
+        swiper: thumbsSwiper,
+      },
+      slidesPerView: 1,
+      spaceBetween: 2,
+      speed: 400,
+      navigation: {
+        nextEl: $navMainNext,
+        prevEl: $navMainPrev,
+      },
+      watchSlidesProgress: true,
+    });
+
+    // Слушаем клик по кнопкам миниатюр и переключаем главный слайдер
+    if ($navThumbsNext && $navThumbsPrev) {
+      $navThumbsNext.addEventListener('click', () => {
+        mainSwiper.slideNext();
+      });
+
+      $navThumbsPrev.addEventListener('click', () => {
+        mainSwiper.slidePrev();
+      });
+    }
+  };
+  $('[data-swiper="product-card"]').each(function () {
+    AW.initProductSlider($(this));
+  });
+
 
   // Хранилище для слайдеров (по wrapper и ID таба)
   const slidersMap = {};
@@ -810,5 +1235,73 @@ $(document).ready(() => {
       });
     }
   });
+
+  //Ползунок
+  function rangeInit() {
+    const ratingSearch = document.querySelector('.filter-catalog-detail__range');
+    if (ratingSearch) {
+      noUiSlider.create(ratingSearch, {
+        start: [0, 22000],
+        connect: true,
+        range: {
+          'min': [0],
+          'max': [22000]
+        },
+        format: wNumb({
+          decimals: 0,
+          thousand: ' ',
+          suffix: ' ₽',
+        })
+      });
+
+      // Функция для изменения ширины инпута под контент
+      function updateInputWidth(inputElement) {
+        const div = document.createElement('div');
+        div.style.visibility = 'hidden';
+        div.style.position = 'absolute';
+        div.style.whiteSpace = 'pre';
+        div.style.font = window.getComputedStyle(inputElement).font;
+        div.style.padding = window.getComputedStyle(inputElement).padding;
+        div.textContent = inputElement.value || inputElement.placeholder;
+        document.body.appendChild(div);
+        inputElement.style.width = div.offsetWidth + 'px';
+        document.body.removeChild(div);
+      }
+
+      const priceStart = document.getElementById('price-start');
+      const priceEnd = document.getElementById('price-end');
+
+      // Связь полей ввода со слайдером
+      priceStart.addEventListener('change', function () {
+        ratingSearch.noUiSlider.set([this.value, null]);
+      });
+
+      priceEnd.addEventListener('change', function () {
+        ratingSearch.noUiSlider.set([null, this.value]);
+      });
+
+      // Обновляем ширину при вводе текста
+      priceStart.addEventListener('input', () => updateInputWidth(priceStart));
+      priceEnd.addEventListener('input', () => updateInputWidth(priceEnd));
+
+      // Обновляем значения инпутов при движении слайдера
+      ratingSearch.noUiSlider.on('update', function (values, handle) {
+        var value = values[handle].replace(' ₽', ''); // Убираем символ валюты
+
+        if (handle) {
+          priceEnd.value = value;
+          updateInputWidth(priceEnd); // <<< Обновляем ширину
+        } else {
+          priceStart.value = value;
+          updateInputWidth(priceStart); // <<< Обновляем ширину
+        }
+      });
+
+      // Инициализируем ширину при загрузке
+      updateInputWidth(priceStart);
+      updateInputWidth(priceEnd);
+    }
+  }
+  rangeInit();
 
 });
